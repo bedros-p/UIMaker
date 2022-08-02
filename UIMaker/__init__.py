@@ -1,9 +1,16 @@
 import discord
-def retCallback(funcName:str):
-    if hasattr(Callbacks, funcName):
-        return getattr(Callbacks,funcName)
+from .callbacks import *
+
+
+
 
 class Page(discord.ui.View):    
+
+    necessaryThings = {
+        "button":["label","type","callback"],
+        "select":["placeholder","options","callback"],
+        "options":["label","value"]
+    }
     def __init__(self,pageUI:dict):
         super().__init__()
         self.pageUI = pageUI
@@ -14,17 +21,35 @@ class Page(discord.ui.View):
             if key.startswith("button"):
                 key = pageUI[key]
                 innerKeys = list(key.keys())
-                if "label" not in innerKeys:
-                    raise AttributeError("Label not included!")
-                if "type" not in innerKeys:
-                    raise AttributeError("Type not included!")
-                if "callback" not in innerKeys:
-                    raise AttributeError("Callback not included!")
+                for important in self.necessaryThings["button"]:
+                    if important not in innerKeys:
+                        raise Exception("Missing key in a button: "+important)
 
                 styleVal = getattr(discord.ButtonStyle, key["type"])
                 button = discord.ui.Button(style=styleVal, label=key["label"])
                 button.callback = retCallback(key["callback"])
                 super().add_item(button)
+
+            elif key.startswith("select"):
+                key = pageUI[key]
+                innerKeys = list(key.keys())
+
+                for important in self.necessaryThings["select"]:
+                    if important not in innerKeys:
+                        raise Exception(f"Missing key in a select: "+important)
+
+                optionsList = []
+                for options in key["options"]:
+                    innerKeys = list(options.keys())
+                    for important in self.necessaryThings["options"]:
+                        if important not in innerKeys:
+                            raise Exception(f"Missing key in a select option: "+important)
+
+                    optionsList.append(discord.SelectOption(**options))
+
+                select = discord.ui.Select(placeholder=key["placeholder"], options=optionsList)
+                select.callback = retCallback(key["callback"])
+                super().add_item(select)
 
         if "embed" in pageUI:
             print(pageUI)
@@ -44,15 +69,5 @@ class Page(discord.ui.View):
             "view" : self
         }
 
-class empty:
-    pass
-class Callbacks:
-	pass
 
-def RegisterAllCallbacks():
-    for obj in Callbacks.__subclasses__():
-        funcList = dir(obj)
-        for func in funcList:
-            if func not in dir(empty):
-                setattr(Callbacks, func, getattr(obj,func))
         
